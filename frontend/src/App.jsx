@@ -7,8 +7,8 @@ import {
 import {
   Wallet, Upload, TrendingUp, DollarSign, Activity,
   ChevronRight, FileText, Trash2, Zap, LayoutGrid,
-  LogOut, User, Lock, Mail, Eye, EyeOff, Calendar, BarChart2,
-  Sparkles, AlertTriangle, Lightbulb, ThumbsUp, Brain
+  LogOut, User, Lock, Mail, Eye, EyeOff, BarChart2,
+  Brain, MessageCircle, Send
 } from 'lucide-react';
 
 /* ─── Fonts & Global CSS ─── */
@@ -22,23 +22,28 @@ style.textContent = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg:        #080808;
-    --surface:   #0f0f0f;
-    --surface2:  #161616;
-    --border:    rgba(255,255,255,0.07);
-    --border2:   rgba(255,255,255,0.12);
-    --text:      #f0ece4;
-    --muted:     #555;
-    --gold:      #d4a843;
-    --gold2:     #f0c460;
-    --green:     #1fff8e;
-    --blue:      #3dc8ff;
-    --rose:      #ff4f6e;
-    --purple:    #a78bfa;
+    --bg:        #090b0f;
+    --surface:   rgba(18,21,27,0.92);
+    --surface2:  #151922;
+    --surface3:  #1c222d;
+    --border:    rgba(255,255,255,0.08);
+    --border2:   rgba(255,255,255,0.15);
+    --text:      #f4f1ea;
+    --muted:     #7d8594;
+    --gold:      #d7a849;
+    --gold2:     #f0c86b;
+    --green:     #39d98a;
+    --blue:      #56b6f7;
+    --rose:      #ff5c7a;
+    --purple:    #a38bff;
+    --shadow:    0 22px 70px rgba(0,0,0,0.32);
   }
 
   body {
-    background: var(--bg);
+    background:
+      radial-gradient(circle at 12% -10%, rgba(215,168,73,0.12), transparent 30%),
+      radial-gradient(circle at 92% 8%, rgba(86,182,247,0.11), transparent 28%),
+      linear-gradient(180deg, #0b0d12 0%, #090b0f 48%, #07080b 100%);
     color: var(--text);
     font-family: 'Outfit', sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -61,13 +66,15 @@ style.textContent = `
   .auth-card {
     width: 100%;
     max-width: 420px;
-    background: var(--surface);
-    border: 1px solid var(--border2);
-    border-radius: 24px;
+    background: rgba(16,19,26,0.88);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 22px;
     padding: 44px 40px;
     position: relative;
     z-index: 1;
     animation: fadeUp 0.5s ease both;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(22px);
   }
 
   .auth-logo {
@@ -79,10 +86,10 @@ style.textContent = `
 
   .auth-logo-icon {
     width: 52px; height: 52px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, #d4a843 0%, #7a5520 100%);
+    border-radius: 16px;
+    background: linear-gradient(135deg, #f0c86b 0%, #a96c2a 100%);
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 0 30px rgba(212,168,67,0.3);
+    box-shadow: 0 14px 36px rgba(215,168,73,0.24);
     flex-shrink: 0;
   }
 
@@ -128,7 +135,7 @@ style.textContent = `
   }
 
   .auth-tab.active {
-    background: var(--surface);
+    background: #202632;
     color: var(--gold2);
     border: 1px solid var(--border2);
   }
@@ -164,9 +171,9 @@ style.textContent = `
   .auth-field {
     width: 100%;
     padding: 13px 16px 13px 42px;
-    background: var(--surface2);
+    background: rgba(255,255,255,0.045);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 12px;
     color: var(--text);
     font-family: 'Outfit', sans-serif;
     font-size: 14px;
@@ -182,8 +189,8 @@ style.textContent = `
     padding: 14px;
     border: none;
     border-radius: 12px;
-    background: linear-gradient(135deg, #d4a843, #a07420);
-    color: #000;
+    background: linear-gradient(135deg, #f0c86b, #b87b2f);
+    color: #111;
     font-family: 'Outfit', sans-serif;
     font-size: 14px;
     font-weight: 700;
@@ -194,7 +201,7 @@ style.textContent = `
     justify-content: center;
     gap: 8px;
     transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
-    box-shadow: 0 4px 24px rgba(212,168,67,0.25);
+    box-shadow: 0 14px 36px rgba(215,168,73,0.22);
   }
   .auth-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
   .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -260,35 +267,29 @@ style.textContent = `
     min-height: 100vh;
     padding: 0;
     position: relative;
-    overflow: hidden;
+    overflow-x: hidden;
   }
 
   .grid-bg {
     position: fixed;
     inset: 0;
     background-image:
-      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
-    background-size: 48px 48px;
+      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+    background-size: 56px 56px;
     pointer-events: none;
     z-index: 0;
+    mask-image: linear-gradient(to bottom, black, transparent 78%);
   }
 
-  .glow-orb {
-    position: fixed;
-    width: 600px; height: 600px;
-    border-radius: 50%;
-    filter: blur(140px);
-    pointer-events: none;
-    z-index: 0;
-  }
+  .glow-orb { display: none; }
 
   .inner {
     position: relative;
     z-index: 1;
-    max-width: 1120px;
+    max-width: 1180px;
     margin: 0 auto;
-    padding: 36px 28px 60px;
+    padding: 32px 28px 64px;
   }
 
   /* ─── HEADER ─── */
@@ -296,22 +297,26 @@ style.textContent = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 48px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+    padding: 18px 20px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: rgba(13,16,22,0.68);
+    box-shadow: 0 18px 50px rgba(0,0,0,0.18);
+    backdrop-filter: blur(18px);
   }
 
   .logo-group { display: flex; align-items: center; gap: 14px; }
 
   .logo-icon {
     width: 52px; height: 52px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, #d4a843 0%, #7a5520 100%);
+    border-radius: 16px;
+    background: linear-gradient(135deg, #f0c86b 0%, #a96c2a 100%);
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 0 30px rgba(212,168,67,0.3);
+    box-shadow: 0 14px 34px rgba(215,168,73,0.22);
   }
 
-  .logo-title { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 2px; line-height: 1; }
+  .logo-title { font-family: 'Bebas Neue', sans-serif; font-size: 34px; letter-spacing: 1.5px; line-height: 1; }
   .logo-title span { color: var(--gold); }
 
   .logo-sub { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.18em; margin-top: 3px; }
@@ -321,12 +326,12 @@ style.textContent = `
   .user-chip {
     display: flex; align-items: center; gap: 8px;
     padding: 8px 14px;
-    border: 1px solid var(--border2);
+    border: 1px solid rgba(215,168,73,0.22);
     border-radius: 999px;
     font-family: 'DM Mono', monospace;
     font-size: 11px;
     color: var(--gold2);
-    background: rgba(212,168,67,0.04);
+    background: rgba(215,168,73,0.08);
   }
 
   .logout-btn {
@@ -337,24 +342,34 @@ style.textContent = `
     font-family: 'DM Mono', monospace;
     font-size: 11px;
     color: var(--rose);
-    background: rgba(255,79,110,0.04);
+    background: rgba(255,92,122,0.07);
     cursor: pointer;
     transition: all 0.2s;
   }
   .logout-btn:hover { background: rgba(255,79,110,0.1); border-color: rgba(255,79,110,0.4); }
 
   /* ─── STAT ROW ─── */
-  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
 
   .stat-card {
-    background: var(--surface);
+    background: linear-gradient(180deg, rgba(24,29,38,0.96), rgba(16,19,26,0.92));
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: 18px;
     padding: 22px 24px;
-    transition: border-color 0.2s, transform 0.2s;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
     animation: fadeUp 0.5s ease both;
+    box-shadow: 0 14px 34px rgba(0,0,0,0.18);
+    position: relative;
+    overflow: hidden;
   }
-  .stat-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    pointer-events: none;
+  }
+  .stat-card:hover { border-color: var(--border2); transform: translateY(-2px); box-shadow: 0 20px 44px rgba(0,0,0,0.24); }
 
   @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -365,23 +380,31 @@ style.textContent = `
   }
 
   .stat-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-  .stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 34px; letter-spacing: 1px; line-height: 1; }
+  .stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 36px; letter-spacing: 0.5px; line-height: 1; }
 
   /* ─── MAIN LAYOUT ─── */
-  .main-grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+  .main-grid { display: grid; grid-template-columns: minmax(290px, 360px) minmax(0, 1fr); gap: 20px; align-items: start; }
 
   /* ─── CARD ─── */
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; animation: fadeUp 0.5s ease both; }
+  .card {
+    background: linear-gradient(180deg, rgba(21,25,33,0.96), rgba(14,17,23,0.94));
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 24px;
+    animation: fadeUp 0.5s ease both;
+    box-shadow: 0 18px 50px rgba(0,0,0,0.22);
+    backdrop-filter: blur(18px);
+  }
 
   .card-title {
     font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted);
     letter-spacing: 0.14em; text-transform: uppercase;
     display: flex; align-items: center; justify-content: space-between;
-    gap: 8px; margin-bottom: 22px;
+    gap: 8px; margin-bottom: 18px;
   }
 
   .card-title-left { display: flex; align-items: center; gap: 8px; }
-  .card-title-left::before { content: ''; display: block; width: 3px; height: 12px; background: var(--gold); border-radius: 2px; }
+  .card-title-left::before { content: ''; display: block; width: 3px; height: 12px; background: linear-gradient(180deg, var(--gold), var(--blue)); border-radius: 2px; }
 
   /* ─── CHART PERIOD TOGGLES ─── */
   .period-toggles {
@@ -392,8 +415,8 @@ style.textContent = `
   .period-btn {
     padding: 4px 10px;
     border: 1px solid var(--border);
-    border-radius: 6px;
-    background: transparent;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.035);
     color: var(--muted);
     font-family: 'DM Mono', monospace;
     font-size: 9px;
@@ -402,16 +425,17 @@ style.textContent = `
     cursor: pointer;
     transition: all 0.2s;
   }
-  .period-btn.active { background: rgba(212,168,67,0.1); border-color: rgba(212,168,67,0.4); color: var(--gold2); }
+  .period-btn.active { background: rgba(215,168,73,0.14); border-color: rgba(215,168,73,0.42); color: var(--gold2); }
 
   /* ─── UPLOAD ZONE ─── */
   .upload-zone {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    border: 1.5px dashed rgba(255,255,255,0.1); border-radius: 14px;
-    padding: 32px 20px; cursor: pointer; transition: all 0.25s; text-align: center;
-    background: var(--surface2);
+    min-height: 190px;
+    border: 1.5px dashed rgba(215,168,73,0.26); border-radius: 16px;
+    padding: 34px 20px; cursor: pointer; transition: all 0.25s; text-align: center;
+    background: linear-gradient(180deg, rgba(215,168,73,0.06), rgba(86,182,247,0.035));
   }
-  .upload-zone:hover, .upload-zone.dragover { border-color: var(--gold); background: rgba(212,168,67,0.04); }
+  .upload-zone:hover, .upload-zone.dragover { border-color: var(--gold); background: linear-gradient(180deg, rgba(215,168,73,0.11), rgba(86,182,247,0.06)); transform: translateY(-1px); }
   .upload-zone input[type="file"] { display: none; }
   .upload-zone p { font-size: 13px; margin-top: 12px; color: var(--muted); }
   .upload-zone p.has-file { color: var(--gold2); font-weight: 500; }
@@ -419,21 +443,21 @@ style.textContent = `
   /* ─── INPUT ─── */
   .field {
     width: 100%; padding: 12px 16px; margin-top: 14px;
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 10px; color: var(--text); font-family: 'Outfit', sans-serif;
-    font-size: 14px; outline: none; transition: border-color 0.2s;
+    background: rgba(255,255,255,0.045); border: 1px solid var(--border);
+    border-radius: 12px; color: var(--text); font-family: 'Outfit', sans-serif;
+    font-size: 14px; outline: none; transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
   }
   .field::placeholder { color: var(--muted); }
-  .field:focus { border-color: rgba(212,168,67,0.5); }
+  .field:focus { border-color: rgba(215,168,73,0.52); background: rgba(255,255,255,0.065); box-shadow: 0 0 0 4px rgba(215,168,73,0.08); }
 
   /* ─── BUTTON ─── */
   .btn {
     width: 100%; margin-top: 16px; padding: 14px; border: none; border-radius: 12px;
-    background: linear-gradient(135deg, #d4a843, #a07420); color: #000;
+    background: linear-gradient(135deg, #f0c86b, #b87b2f); color: #111;
     font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700;
     letter-spacing: 0.04em; cursor: pointer; display: flex; align-items: center;
     justify-content: center; gap: 8px; transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
-    box-shadow: 0 4px 24px rgba(212,168,67,0.25);
+    box-shadow: 0 14px 34px rgba(215,168,73,0.22);
   }
   .btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 6px 32px rgba(212,168,67,0.35); }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -442,45 +466,47 @@ style.textContent = `
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* ─── TABS ─── */
-  .tabs { display: flex; gap: 4px; background: var(--surface2); border-radius: 10px; padding: 4px; margin-bottom: 20px; }
+  .tabs { display: flex; gap: 4px; background: rgba(255,255,255,0.045); border-radius: 12px; padding: 4px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.045); }
   .tab-btn {
     flex: 1; padding: 8px 12px; border: none; border-radius: 8px; background: transparent;
     color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px;
     letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; transition: all 0.2s;
   }
-  .tab-btn.active { background: var(--surface); color: var(--gold2); border: 1px solid var(--border2); }
+  .tab-btn.active { background: #202632; color: var(--gold2); border: 1px solid var(--border2); box-shadow: 0 8px 20px rgba(0,0,0,0.16); }
 
   /* ─── TX ROW ─── */
   .tx-row {
     display: grid; grid-template-columns: 1fr auto auto auto;
-    align-items: center; gap: 16px; padding: 14px 0;
+    align-items: center; gap: 16px; padding: 14px 12px;
     border-bottom: 1px solid var(--border); transition: background 0.15s;
+    border-radius: 12px;
   }
+  .tx-row:hover { background: rgba(255,255,255,0.035); }
   .tx-row:last-child { border-bottom: none; }
   .tx-name { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tx-date { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 3px; }
   .tx-badge { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.1em; padding: 4px 8px; border-radius: 5px; background: rgba(255,255,255,0.04); color: var(--muted); border: 1px solid var(--border); white-space: nowrap; }
   .tx-badge.high { background: rgba(255,79,110,0.08); color: var(--rose); border-color: rgba(255,79,110,0.2); }
   .tx-amount { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; color: var(--rose); white-space: nowrap; }
-  .delete-btn { background: none; border: none; color: #333; cursor: pointer; padding: 6px; border-radius: 6px; display: flex; align-items: center; transition: color 0.2s, background 0.2s; }
+  .delete-btn { background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.04); color: #525a66; cursor: pointer; padding: 7px; border-radius: 8px; display: flex; align-items: center; transition: color 0.2s, background 0.2s; }
   .delete-btn:hover { color: var(--rose); background: rgba(255,79,110,0.08); }
 
   /* ─── TOP TX ─── */
-  .top-tx { margin-top: 18px; padding: 16px 18px; background: var(--surface2); border-radius: 12px; border: 1px solid var(--border); }
+  .top-tx { margin-top: 18px; padding: 18px; background: rgba(255,255,255,0.045); border-radius: 14px; border: 1px solid var(--border); }
   .top-tx-label { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 8px; }
   .top-tx-amount { font-family: 'Bebas Neue', sans-serif; font-size: 30px; color: var(--gold); letter-spacing: 1px; line-height: 1; }
   .top-tx-recipient { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
   /* ─── EMPTY ─── */
-  .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; color: var(--muted); gap: 10px; }
+  .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; color: var(--muted); gap: 10px; background: rgba(255,255,255,0.025); border: 1px dashed rgba(255,255,255,0.07); border-radius: 14px; }
   .empty p { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.1em; }
 
   /* ─── SCROLL AREA ─── */
-  .scroll-area { max-height: 320px; overflow-y: auto; padding-right: 4px; }
+  .scroll-area { max-height: 360px; overflow-y: auto; padding-right: 4px; }
 
   /* ─── PIE TOOLTIP ─── */
   .pie-tooltip {
-    background: #111;
+    background: #151922;
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 10px;
     padding: 10px 14px;
@@ -493,7 +519,7 @@ style.textContent = `
   .pie-tooltip-pct { color: var(--muted); font-size: 10px; margin-top: 2px; }
 
   /* ─── BAR TOOLTIP ─── */
-  .bar-tooltip { padding: 9px 14px; background: #111; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--gold); }
+  .bar-tooltip { padding: 9px 14px; background: #151922; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-family: 'DM Mono', monospace; font-size: 13px; color: var(--gold); }
 
   /* ─── CATEGORY LEGEND ─── */
   .cat-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
@@ -504,134 +530,82 @@ style.textContent = `
   .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-  /* ─── AI ADVISOR ─── */
-  .ai-btn {
-    width: 100%; padding: 13px; border: 1px solid rgba(167,139,250,0.3);
-    border-radius: 12px; background: rgba(167,139,250,0.06);
-    color: var(--purple); font-family: 'Outfit', sans-serif;
-    font-size: 13px; font-weight: 600; letter-spacing: 0.03em;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    gap: 8px; transition: all 0.2s; margin-top: 12px;
-  }
-  .ai-btn:hover:not(:disabled) { background: rgba(167,139,250,0.12); border-color: rgba(167,139,250,0.5); }
-  .ai-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
   .ai-spinner { width: 14px; height: 14px; border: 2px solid rgba(167,139,250,0.2); border-top-color: var(--purple); border-radius: 50%; animation: spin 0.7s linear infinite; }
 
-  .advice-card {
-    margin-top: 14px; padding: 18px;
-    background: var(--surface2); border-radius: 14px;
-    border: 1px solid rgba(167,139,250,0.15);
-    animation: fadeUp 0.4s ease both;
+  .ask-chat {
+    margin-top: 16px; max-height: 280px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 10px; padding-right: 4px;
   }
-
-  .advice-summary {
-    font-size: 13px; color: #aaa; line-height: 1.6;
-    margin-bottom: 16px; padding-bottom: 14px;
-    border-bottom: 1px solid var(--border);
+  .ask-message {
+    max-width: 88%; padding: 11px 13px; border-radius: 12px;
+    font-size: 13px; line-height: 1.55; animation: fadeUp 0.25s ease both;
   }
-
-  .advice-score {
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: 16px;
+  .ask-message.user {
+    align-self: flex-end; background: rgba(212,168,67,0.1);
+    border: 1px solid rgba(212,168,67,0.22); color: var(--gold2);
   }
-  .score-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
-  .score-bar { flex: 1; height: 4px; background: #1e1e1e; border-radius: 2px; overflow: hidden; }
-  .score-fill { height: 100%; border-radius: 2px; transition: width 0.8s ease; }
-  .score-num { font-family: 'Bebas Neue', sans-serif; font-size: 20px; }
-
-  .advice-item {
-    padding: 12px 14px; border-radius: 10px;
-    margin-bottom: 8px; border: 1px solid transparent;
+  .ask-message.ai {
+    align-self: flex-start; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(167,139,250,0.18); color: #b9b9b9;
   }
-  .advice-item:last-child { margin-bottom: 0; }
-  .advice-item.warning { background: rgba(255,79,110,0.05); border-color: rgba(255,79,110,0.15); }
-  .advice-item.tip     { background: rgba(61,200,255,0.05); border-color: rgba(61,200,255,0.15); }
-  .advice-item.positive{ background: rgba(31,255,142,0.05); border-color: rgba(31,255,142,0.15); }
-
-  .advice-title {
-    font-size: 12px; font-weight: 600; margin-bottom: 4px;
-    display: flex; align-items: center; gap: 6px;
+  .ask-source {
+    margin-top: 6px; font-family: 'DM Mono', monospace;
+    font-size: 9px; color: #3f3f3f; letter-spacing: 0.1em; text-transform: uppercase;
   }
-  .advice-item.warning  .advice-title { color: var(--rose); }
-  .advice-item.tip      .advice-title { color: var(--blue); }
-  .advice-item.positive .advice-title { color: var(--green); }
-  .advice-detail { font-size: 12px; color: #666; line-height: 1.5; }
-
-  /* ─── AI ADVISOR EXTRA ─── */
-  .income-input-wrap {
-    display: flex; gap: 10px; margin: 14px 0 0;
+  .ask-suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .ask-chip {
+    padding: 8px 10px; border-radius: 999px; border: 1px solid rgba(167,139,250,0.2);
+    background: rgba(163,139,255,0.07); color: #c6b8ff;
+    font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 0.08em;
+    cursor: pointer; transition: all 0.2s;
   }
-  .income-input {
-    flex: 1; padding: 11px 14px; background: var(--surface2);
-    border: 1px solid var(--border); border-radius: 10px;
-    color: var(--text); font-family: 'Outfit', sans-serif;
-    font-size: 14px; outline: none; transition: border-color 0.2s;
-  }
-  .income-input::placeholder { color: var(--muted); }
-  .income-input:focus { border-color: rgba(167,139,250,0.5); }
-
-  .advisor-section-title {
-    font-family: 'DM Mono', monospace; font-size: 10px;
-    color: var(--muted); letter-spacing: 0.14em; text-transform: uppercase;
-    display: flex; align-items: center; gap: 8px;
-    margin: 20px 0 12px;
-  }
-  .advisor-section-title::before { content: ''; display: block; width: 3px; height: 10px; background: var(--purple); border-radius: 2px; }
-
-  .savings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
-  .savings-stat { background: #111; border: 1px solid #1e1e1e; border-radius: 10px; padding: 14px; }
-  .savings-stat-label { font-family: 'DM Mono', monospace; font-size: 9px; color: #444; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
-  .savings-stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 0.5px; }
-
-  .cut-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
-  .cut-row:last-child { border-bottom: none; }
-  .cut-cat { font-size: 13px; font-weight: 500; color: var(--text); }
-  .cut-reason { font-size: 11px; color: #555; margin-top: 2px; }
-  .cut-amounts { text-align: right; flex-shrink: 0; margin-left: 12px; }
-  .cut-current { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--rose); text-decoration: line-through; }
-  .cut-suggested { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--green); }
-  .cut-save { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); margin-top: 2px; }
-
-  .stock-card {
-    background: #111; border: 1px solid #1e1e1e; border-radius: 12px;
-    padding: 14px 16px; margin-bottom: 8px;
+  .ask-chip:hover:not(:disabled) { background: rgba(167,139,250,0.1); border-color: rgba(167,139,250,0.38); }
+  .ask-chip:disabled { opacity: 0.45; cursor: not-allowed; }
+  .ask-input-wrap { display: flex; gap: 10px; margin-top: 14px; }
+  .ask-input {
+    flex: 1; min-width: 0; padding: 12px 14px; background: rgba(255,255,255,0.045);
+    border: 1px solid var(--border); border-radius: 12px; color: var(--text);
+    font-family: 'Outfit', sans-serif; font-size: 14px; outline: none;
     transition: border-color 0.2s;
   }
-  .stock-card:last-child { margin-bottom: 0; }
-  .stock-card:hover { border-color: rgba(167,139,250,0.2); }
-  .stock-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-  .stock-symbol { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: var(--gold); letter-spacing: 1px; }
-  .stock-name { font-size: 11px; color: #555; margin-top: 1px; }
-  .stock-price { text-align: right; }
-  .stock-price-val { font-family: 'DM Mono', monospace; font-size: 14px; color: var(--text); }
-  .stock-change { font-family: 'DM Mono', monospace; font-size: 11px; margin-top: 2px; }
-  .stock-alloc { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid #1a1a1a; }
-  .stock-alloc-amount { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--purple); }
-  .stock-alloc-shares { font-family: 'DM Mono', monospace; font-size: 11px; color: #444; }
-  .stock-risk { font-family: 'DM Mono', monospace; font-size: 9px; padding: 3px 8px; border-radius: 4px; }
-  .stock-risk.Low { background: rgba(31,255,142,0.08); color: var(--green); border: 1px solid rgba(31,255,142,0.2); }
-  .stock-risk.Medium { background: rgba(249,115,22,0.08); color: #f97316; border: 1px solid rgba(249,115,22,0.2); }
-  .stock-risk.High { background: rgba(255,79,110,0.08); color: var(--rose); border: 1px solid rgba(255,79,110,0.2); }
-  .stock-reason { font-size: 12px; color: #555; margin-top: 8px; line-height: 1.5; }
-
-  .priority-box {
-    margin-top: 16px; padding: 14px 16px;
-    background: rgba(212,168,67,0.05); border: 1px solid rgba(212,168,67,0.2);
-    border-radius: 10px;
+  .ask-input::placeholder { color: var(--muted); }
+  .ask-input:focus { border-color: rgba(167,139,250,0.5); }
+  .ask-send {
+    width: 44px; height: 44px; border-radius: 12px; border: 1px solid rgba(167,139,250,0.3);
+    background: rgba(167,139,250,0.08); color: var(--purple);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: all 0.2s; flex-shrink: 0;
   }
-  .priority-label { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--gold); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 6px; }
-  .priority-text { font-size: 13px; color: var(--text); line-height: 1.6; }
+  .ask-send:hover:not(:disabled) { background: rgba(167,139,250,0.14); border-color: rgba(167,139,250,0.5); }
+  .ask-send:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  .disclaimer-text { font-family: 'DM Mono', monospace; font-size: 9px; color: #333; margin-top: 14px; line-height: 1.6; text-align: center; }
-
-  @media (max-width: 860px) { .main-grid { grid-template-columns: 1fr; } .stat-row { grid-template-columns: repeat(3, 1fr); } }
-  @media (max-width: 580px) { .stat-row { grid-template-columns: 1fr 1fr; } .header { flex-direction: column; align-items: flex-start; gap: 16px; } .auth-card { padding: 32px 24px; margin: 16px; } .savings-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 920px) {
+    .inner { padding: 22px 16px 48px; }
+    .main-grid { grid-template-columns: 1fr; }
+    .stat-row { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .stat-row { grid-template-columns: 1fr; }
+    .header { flex-direction: column; align-items: flex-start; gap: 16px; padding: 18px; }
+    .header-right { width: 100%; justify-content: space-between; gap: 8px; }
+    .user-chip, .logout-btn { max-width: 100%; font-size: 10px; }
+    .auth-card { padding: 32px 24px; margin: 16px; }
+    .card { padding: 18px; border-radius: 16px; }
+    .tx-row { grid-template-columns: 1fr auto; gap: 10px; }
+    .tx-badge { display: none; }
+    .delete-btn { grid-column: 2; }
+    .ask-input-wrap { gap: 8px; }
+  }
 `;
 document.head.appendChild(style);
 
 const API_BASE = "http://127.0.0.1:5001/api";
 const CHART_COLORS = ['#d4a843', '#1fff8e', '#3dc8ff', '#ff4f6e', '#a78bfa', '#f97316', '#facc15', '#06b6d4', '#84cc16'];
+const ASK_SUGGESTIONS = [
+  'Where did I spend most this month?',
+  'Can I save ₹10,000 this month?',
+  'Which expenses should I reduce first?',
+];
 
 /* ─── Category classifier ─── */
 const CATEGORY_KEYWORDS = {
@@ -909,9 +883,10 @@ export default function App() {
   const [barPeriod, setBarPeriod]     = useState('monthly');   // 'monthly' | 'yearly'
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear]   = useState(new Date().getFullYear());
-  const [aiAdvice, setAiAdvice]           = useState(null);
-  const [aiLoading, setAiLoading]         = useState(false);
-  const [aiError, setAiError]             = useState('');
+  const [askInput, setAskInput]           = useState('');
+  const [askMessages, setAskMessages]     = useState([]);
+  const [askLoading, setAskLoading]       = useState(false);
+  const [askError, setAskError]           = useState('');
 
   const fetchHistory = useCallback(async () => {
     if (!getToken()) return;
@@ -944,7 +919,8 @@ export default function App() {
     formData.append('email', email || user?.email || 'user@example.com');
     try {
       const response = await axios.post(`${API_BASE}/upload`, formData);
-      alert(`✅ Extracted ${response.data.data.length} record(s) successfully.`);
+      const aiLabel = response.data.ai?.cleanupApplied ? ' AI cleanup applied.' : ' Saved with OCR parser fallback.';
+      alert(`✅ Extracted ${response.data.data.length} record(s) successfully.${aiLabel}`);
       setFile(null);
       fetchHistory();
     } catch (err) {
@@ -1010,21 +986,33 @@ export default function App() {
     }
   };
 
-  const [monthlyIncome, setMonthlyIncome] = useState('');
+  const askFinance = async (questionOverride) => {
+    const question = (questionOverride || askInput).trim();
+    if (!question) return;
+    if (transactions.length === 0) {
+      setAskError('Upload transactions first, then ask me about your spending.');
+      return;
+    }
 
-  const fetchAdvisor = async () => {
-    if (!monthlyIncome || isNaN(Number(monthlyIncome)) || Number(monthlyIncome) <= 0)
-      return setAiError('Please enter your monthly income to get personalised advice.');
-    setAiLoading(true);
-    setAiError('');
-    setAiAdvice(null);
+    setAskLoading(true);
+    setAskError('');
+    setAskInput('');
+    setAskMessages(prev => [...prev, { role: 'user', text: question }]);
+
     try {
-      const res = await axios.post(`${API_BASE}/ai/advisor`, { monthlyIncome: Number(monthlyIncome) });
-      setAiAdvice(res.data);
+      const res = await axios.post(`${API_BASE}/ai/ask`, { question });
+      setAskMessages(prev => [
+        ...prev,
+        {
+          role: 'ai',
+          text: res.data.answer,
+          source: res.data.source === 'ai' ? 'AI answer' : 'Local summary',
+        }
+      ]);
     } catch (err) {
-      setAiError(err.response?.data?.message || 'AI analysis failed. Try again.');
+      setAskError(err.response?.data?.message || 'Ask My Finance failed. Try again.');
     } finally {
-      setAiLoading(false);
+      setAskLoading(false);
     }
   };
 
@@ -1256,153 +1244,80 @@ export default function App() {
               )}
             </div>
 
-            {/* ─── AI FINANCIAL ADVISOR CARD ─── */}
-            <div className="card" style={{ animationDelay: '0.4s' }}>
+            {/* Ask My Finance */}
+            <div className="card" style={{ animationDelay: '0.35s' }}>
               <div className="card-title">
-                <div className="card-title-left"><Brain size={11} />AI Financial Advisor</div>
-                <div style={{ fontFamily: 'DM Mono', fontSize: 9, color: 'var(--purple)', letterSpacing: '0.1em' }}>LIVE STOCKS · LLAMA AI</div>
+                <div className="card-title-left"><MessageCircle size={11} />Ask My Finance</div>
+                <div style={{ fontFamily: 'DM Mono', fontSize: 9, color: 'var(--purple)', letterSpacing: '0.1em' }}>TRANSACTION CHAT</div>
               </div>
 
-              <p style={{ fontSize: 12, color: '#555', lineHeight: 1.6 }}>
-                Enter your monthly income and get a complete financial plan — savings targets, spending cuts, and personalised NSE stock recommendations with live prices.
-              </p>
+              <div className="ask-suggestions">
+                {ASK_SUGGESTIONS.map(prompt => (
+                  <button
+                    key={prompt}
+                    className="ask-chip"
+                    onClick={() => askFinance(prompt)}
+                    disabled={askLoading || transactions.length === 0}
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
 
-              {/* Income input */}
-              <div className="income-input-wrap">
+              <div className="ask-chat">
+                {askMessages.length === 0 ? (
+                  <div className="empty" style={{ padding: '24px 20px' }}>
+                    <Brain size={22} />
+                    <p>ASK ABOUT YOUR SPENDING</p>
+                  </div>
+                ) : (
+                  askMessages.map((msg, i) => (
+                    <div key={`${msg.role}-${i}`} className={`ask-message ${msg.role}`}>
+                      {msg.text}
+                      {msg.source && <div className="ask-source">{msg.source}</div>}
+                    </div>
+                  ))
+                )}
+                {askLoading && (
+                  <div className="ask-message ai">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div className="ai-spinner" /> Thinking through your spending...
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {askError && (
+                <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(255,79,110,0.06)', border: '1px solid rgba(255,79,110,0.2)', borderRadius: 8, fontSize: 12, color: 'var(--rose)', fontFamily: 'DM Mono' }}>
+                  {askError}
+                </div>
+              )}
+
+              <div className="ask-input-wrap">
                 <input
-                  className="income-input"
-                  type="number"
-                  placeholder="Monthly income (₹)"
-                  value={monthlyIncome}
-                  onChange={e => setMonthlyIncome(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && fetchAdvisor()}
-                  disabled={aiLoading}
+                  className="ask-input"
+                  value={askInput}
+                  onChange={e => setAskInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && askFinance()}
+                  placeholder="Ask about savings, categories, or cuts"
+                  disabled={askLoading}
+                  maxLength={300}
                 />
-                <button className="ai-btn" style={{ width: 'auto', marginTop: 0, padding: '11px 18px' }}
-                  onClick={fetchAdvisor} disabled={aiLoading || transactions.length === 0}>
-                  {aiLoading
-                    ? <><div className="ai-spinner" /> Analyzing…</>
-                    : <><Sparkles size={13} /> {aiAdvice ? 'Re-analyse' : 'Analyse'}</>}
+                <button
+                  className="ask-send"
+                  onClick={() => askFinance()}
+                  disabled={askLoading || !askInput.trim() || transactions.length === 0}
+                  title="Send question"
+                >
+                  {askLoading ? <div className="ai-spinner" /> : <Send size={16} />}
                 </button>
               </div>
 
-              {aiError && (
-                <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(255,79,110,0.06)', border: '1px solid rgba(255,79,110,0.2)', borderRadius: 8, fontSize: 12, color: 'var(--rose)', fontFamily: 'DM Mono' }}>
-                  {aiError}
-                </div>
-              )}
-
-              {transactions.length === 0 && !aiLoading && (
+              {transactions.length === 0 && (
                 <div style={{ marginTop: 10, fontFamily: 'DM Mono', fontSize: 10, color: '#2a2a2a', textAlign: 'center' }}>
-                  Upload a statement first to enable AI analysis
+                  Upload transactions first to start chatting
                 </div>
               )}
-
-              {aiAdvice && (() => {
-                const sa    = aiAdvice.savingsAdvice || {};
-                const cuts  = aiAdvice.cutSpendings  || [];
-                const ip    = aiAdvice.investmentPlan|| {};
-                const score = aiAdvice.overallScore  || 0;
-                const scoreColor = score >= 7 ? 'var(--green)' : score >= 4 ? '#f97316' : 'var(--rose)';
-                return (
-                  <div style={{ marginTop: 18 }}>
-
-                    {/* ── Health Score ── */}
-                    <div className="advice-score">
-                      <span className="score-label">FINANCIAL HEALTH</span>
-                      <div className="score-bar">
-                        <div className="score-fill" style={{ width: `${score * 10}%`, background: scoreColor }} />
-                      </div>
-                      <span className="score-num" style={{ color: scoreColor }}>{score}/10</span>
-                    </div>
-
-                    {/* ── Savings Section ── */}
-                    <div className="advisor-section-title"><DollarSign size={10} />Savings Plan</div>
-                    <div className="advice-summary">{sa.summary}</div>
-                    <div className="savings-grid" style={{ marginTop: 12 }}>
-                      <div className="savings-stat">
-                        <div className="savings-stat-label">Current Rate</div>
-                        <div className="savings-stat-value" style={{ color: 'var(--rose)' }}>{sa.currentSavingsRate ?? '--'}%</div>
-                      </div>
-                      <div className="savings-stat">
-                        <div className="savings-stat-label">Target Rate</div>
-                        <div className="savings-stat-value" style={{ color: 'var(--green)' }}>{sa.recommendedSavingsRate ?? '--'}%</div>
-                      </div>
-                      <div className="savings-stat">
-                        <div className="savings-stat-label">Save Monthly</div>
-                        <div className="savings-stat-value" style={{ color: 'var(--gold)' }}>₹{Number(sa.monthlySavingsAmount || 0).toLocaleString('en-IN')}</div>
-                      </div>
-                      <div className="savings-stat">
-                        <div className="savings-stat-label">Emergency Fund</div>
-                        <div className="savings-stat-value" style={{ color: 'var(--blue)' }}>₹{Number(sa.emergencyFundTarget || 0).toLocaleString('en-IN')}</div>
-                      </div>
-                    </div>
-
-                    {/* ── Cut Spending ── */}
-                    {cuts.length > 0 && (<>
-                      <div className="advisor-section-title"><AlertTriangle size={10} />Where to Cut</div>
-                      <div>
-                        {cuts.map((c, i) => (
-                          <div key={i} className="cut-row">
-                            <div>
-                              <div className="cut-cat">{c.category}</div>
-                              <div className="cut-reason">{c.reason}</div>
-                            </div>
-                            <div className="cut-amounts">
-                              <div className="cut-current">₹{Number(c.currentAmount || 0).toLocaleString('en-IN')}</div>
-                              <div className="cut-suggested">₹{Number(c.suggestedAmount || 0).toLocaleString('en-IN')}</div>
-                              <div className="cut-save">save ₹{Number(c.savingAmount || 0).toLocaleString('en-IN')}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </>)}
-
-                    {/* ── Investment Plan ── */}
-                    {ip.stocks?.length > 0 && (<>
-                      <div className="advisor-section-title"><TrendingUp size={10} />Stock Recommendations</div>
-                      <div style={{ marginBottom: 8, fontFamily: 'DM Mono', fontSize: 10, color: '#444' }}>
-                        Monthly investment: <span style={{ color: 'var(--purple)' }}>₹{Number(ip.monthlyInvestmentAmount || 0).toLocaleString('en-IN')}</span>
-                        &nbsp;·&nbsp; Expected return: <span style={{ color: 'var(--green)' }}>{ip.expectedMonthlyReturn || '--'}</span>
-                      </div>
-                      {ip.stocks.map((s, i) => (
-                        <div key={i} className="stock-card">
-                          <div className="stock-header">
-                            <div>
-                              <div className="stock-symbol">{s.symbol}</div>
-                              <div className="stock-name">{s.name}</div>
-                            </div>
-                            <div className="stock-price">
-                              <div className="stock-price-val">₹{Number(s.currentPrice || 0).toLocaleString('en-IN')}</div>
-                              <div className="stock-risk" style={{ marginTop: 4 }}>{s.riskLevel}</div>
-                            </div>
-                          </div>
-                          <div className="stock-reason">{s.reason}</div>
-                          <div className="stock-alloc">
-                            <div>
-                              <div className="stock-alloc-amount">₹{Number(s.allocationAmount || 0).toLocaleString('en-IN')} · {s.allocationPercent}%</div>
-                              <div className="stock-alloc-shares">~{s.sharesCanBuy || 0} shares</div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </>)}
-
-                    {/* ── Top Priority ── */}
-                    {aiAdvice.topPriority && (
-                      <div className="priority-box">
-                        <div className="priority-label">⚡ Top Priority This Month</div>
-                        <div className="priority-text">{aiAdvice.topPriority}</div>
-                      </div>
-                    )}
-
-                    {/* ── Disclaimer ── */}
-                    <div className="disclaimer-text">
-                      {ip.disclaimer || 'Investments are subject to market risks. This is AI-generated advice, not SEBI-registered financial advice.'}
-                    </div>
-                  </div>
-                );
-              })()}
             </div>
 
           </div>

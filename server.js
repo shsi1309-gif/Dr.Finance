@@ -68,6 +68,264 @@ const upload = multer({
 }).single('payout_screenshot');
 
 // =============================================================================
+// AI TRANSACTION CLEANUP
+// =============================================================================
+
+const AI_TRANSACTION_CATEGORIES = [
+    'Food & Dining',
+    'Grocery',
+    'Shopping',
+    'Bills & Utilities',
+    'Travel',
+    'Entertainment',
+    'Health',
+    'Education',
+    'Transfer',
+    'Others',
+];
+
+const OPENROUTER_MODELS = [
+    'openrouter/free',
+    'meta-llama/llama-3.3-70b-instruct:free',
+    'google/gemma-3-27b-it:free',
+    'qwen/qwen3-8b:free',
+];
+
+const parseJsonFromAIText = (rawText) => {
+    const cleaned = String(rawText || '').replace(/```json|```/g, '').trim();
+    const match = cleaned.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
+    if (!match) return null;
+
+    try {
+        return JSON.parse(match[0]);
+    } catch {
+        return null;
+    }
+};
+
+const normalizeTransactionText = (value, fallback = '') => {
+    const text = String(value || fallback || '').replace(/\s+/g, ' ').trim();
+    return text.slice(0, 80);
+};
+
+const normalizeAITransaction = (aiTx, originalTx, index) => {
+    const originalAmount = Number(originalTx.amount);
+    const aiAmount = Number(aiTx?.amount);
+    const amount = Number.isFinite(aiAmount) && aiAmount > 0 && Math.abs(aiAmount - originalAmount) / originalAmount <= 0.05
+        ? aiAmount
+        : originalAmount;
+
+    const category = AI_TRANSACTION_CATEGORIES.includes(aiTx?.category)
+        ? aiTx.category
+        : (originalTx.category || 'Others');
+
+    const parsedDate = aiTx?.date ? new Date(aiTx.date) : null;
+    const date = parsedDate && !Number.isNaN(parsedDate.getTime())
+        ? parsedDate.toISOString().split('T')[0]
+        : originalTx.date;
+
+    const recipient = normalizeTransactionText(aiTx?.recipient || aiTx?.merchant, originalTx.recipient || 'General Expense');
+    const description = normalizeTransactionText(aiTx?.description, originalTx.description || recipient);
+
+    return {
+        ...originalTx,
+        amount,
+        recipient,
+        description,
+        category,
+        date,
+        dateTime: originalTx.dateTime || date,
+        ai: {
+            enhanced: true,
+            confidence: Math.max(0, Math.min(1, Number(aiTx?.confidence) || 0)),
+            note: normalizeTransactionText(aiTx?.note || aiTx?.notes, ''),
+            originalIndex: Number.isInteger(aiTx?.index) ? aiTx.index : index,
+        },
+    };
+};
+
+async function enhanceTransactionsWithAI(transactions) {
+    const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+    if (!OPENROUTER_KEY || transactions.length === 0) {
+        return { transactions, enabled: false, message: OPENROUTER_KEY ? 'No transactions to enhance.' : 'AI key not configured.' };
+    }
+
+    const compactTransactions = transactions.slice(0, 60).map((tx, index) => ({
+        index,
+        amount: Number(tx.amount),
+        recipient: tx.recipient || '',
+        description: tx.description || '',
+        category: tx.category || 'Others',
+        date: tx.date || '',
+        dateTime: tx.dateTime || '',
+    }));
+
+    const prompt = `You clean OCR-extracted Indian personal finance transactions.
+
+Rules:
+- Keep exactly one output object per input object and preserve the same index.
+- Do not invent transactions.
+- Clean merchant/recipient names, fix obvious OCR casing/spaces, and choose the best category.
+- Categories must be one of: ${AI_TRANSACTION_CATEGORIES.join(', ')}.
+- Amount should usually stay the same. Only change amount for obvious OCR decimal/comma cleanup.
+- Return ONLY a JSON array, no markdown.
+
+Input transactions:
+${JSON.stringify(compactTransactions)}
+
+Output schema:
+[
+  {
+    "index": 0,
+    "amount": 123.45,
+    "recipient": "Clean merchant or person name",
+    "description": "Short clean transaction description",
+    "category": "Food & Dining",
+    "date": "YYYY-MM-DD",
+    "confidence": 0.0,
+    "note": "Very short reason for category"
+  }
+]`;
+
+    let lastError = null;
+
+    for (const model of OPENROUTER_MODELS) {
+        try {
+            const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${OPENROUTER_KEY}`,
+                    'Content-Type': 'application/json',
+                    'HTTP-Referer': process.env.FRONTEND_URL || 'http://localhost:5173',
+                    'X-Title': 'Dr. Finance AI'
+                },
+                body: JSON.stringify({
+                    model,
+                    messages: [{ role: 'user', content: prompt }],
+                    max_tokens: 2200,
+                    temperature: 0.1
+                })
+            });
+
+            if (!aiRes.ok) {
+                lastError = await aiRes.text();
+                console.warn(`AI cleanup model ${model} failed:`, lastError);
+                continue;
+            }
+
+            const aiData = await aiRes.json();
+            const parsed = parseJsonFromAIText(aiData.choices?.[0]?.message?.content);
+            if (!Array.isArray(parsed)) {
+                lastError = 'AI cleanup returned invalid JSON.';
+                console.warn(lastError);
+                continue;
+            }
+
+            const aiByIndex = new Map(parsed.map((tx, index) => [
+                Number.isInteger(tx?.index) ? tx.index : index,
+                tx,
+            ]));
+
+            const enhanced = transactions.map((tx, index) => {
+                const aiTx = aiByIndex.get(index);
+                return aiTx ? normalizeAITransaction(aiTx, tx, index) : tx;
+            });
+
+            console.log(`AI cleanup response from: ${model}`);
+            return { transactions: enhanced, enabled: true, model };
+        } catch (err) {
+            lastError = err.message;
+            console.warn(`AI cleanup error with model: ${model}`, err.message);
+        }
+    }
+
+    console.warn('AI cleanup skipped. Falling back to OCR parser output.', lastError);
+    return { transactions, enabled: false, message: 'AI cleanup unavailable. Used OCR parser output.' };
+}
+
+const formatINR = (value) => `₹${Math.round(Number(value) || 0).toLocaleString('en-IN')}`;
+
+const buildTransactionInsights = (transactions) => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const currentMonthTransactions = transactions.filter(tx => {
+        const d = new Date(tx.date);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    });
+
+    const source = currentMonthTransactions.length ? currentMonthTransactions : transactions;
+    const totalSpent = source.reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    const categoryTotals = {};
+    const merchantTotals = {};
+
+    source.forEach(tx => {
+        const category = tx.category || 'Others';
+        const merchant = tx.recipient || 'Unknown';
+        categoryTotals[category] = (categoryTotals[category] || 0) + Number(tx.amount || 0);
+        merchantTotals[merchant] = (merchantTotals[merchant] || 0) + Number(tx.amount || 0);
+    });
+
+    const topCategories = Object.entries(categoryTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([name, amount]) => ({ name, amount }));
+
+    const topMerchants = Object.entries(merchantTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([name, amount]) => ({ name, amount }));
+
+    return {
+        period: currentMonthTransactions.length ? 'current month' : 'all available transactions',
+        transactionCount: source.length,
+        totalSpent,
+        topCategories,
+        topMerchants,
+        recentTransactions: transactions.slice(0, 25).map(tx => ({
+            amount: Number(tx.amount || 0),
+            recipient: tx.recipient || 'Unknown',
+            category: tx.category || 'Others',
+            date: tx.date,
+        })),
+    };
+};
+
+const getLocalFinanceAnswer = (question, insights) => {
+    const q = String(question || '').toLowerCase();
+    const topCategory = insights.topCategories[0];
+    const topMerchant = insights.topMerchants[0];
+    const targetMatch = q.match(/(?:save|saving|savings)\D*(\d[\d,]*)/i);
+    const target = targetMatch ? Number(targetMatch[1].replace(/,/g, '')) : null;
+
+    if (/where.*spend|spent.*most|highest|top/.test(q) && topCategory) {
+        return `You spent the most on ${topCategory.name}: ${formatINR(topCategory.amount)} in ${insights.period}. Your highest merchant/person is ${topMerchant?.name || 'Unknown'} at ${formatINR(topMerchant?.amount || 0)}.`;
+    }
+
+    if (target) {
+        const flexibleCategories = insights.topCategories.filter(c =>
+            ['Food & Dining', 'Shopping', 'Entertainment', 'Travel', 'Others'].includes(c.name)
+        );
+        const possibleSavings = flexibleCategories.reduce((sum, c) => sum + c.amount * 0.2, 0);
+        const canSave = possibleSavings >= target;
+        const firstCut = flexibleCategories[0];
+        return canSave
+            ? `Yes, ${formatINR(target)} looks possible if you cut around 20% from flexible categories. Start with ${firstCut?.name || 'your top non-essential category'}, where current spend is ${formatINR(firstCut?.amount || 0)}.`
+            : `Saving ${formatINR(target)} may be difficult from visible spending alone. A realistic first target is around ${formatINR(possibleSavings)} by trimming flexible categories like ${flexibleCategories.map(c => c.name).slice(0, 3).join(', ') || 'shopping and dining'}.`;
+    }
+
+    if (/reduce|cut|expense|expenses|first|priority/.test(q) && topCategory) {
+        const cutCandidates = insights.topCategories.filter(c =>
+            ['Food & Dining', 'Shopping', 'Entertainment', 'Travel', 'Others'].includes(c.name)
+        );
+        const candidate = cutCandidates[0] || topCategory;
+        return `Reduce ${candidate.name} first. It is currently ${formatINR(candidate.amount)}, and even a 15-20% cut could free up ${formatINR(candidate.amount * 0.18)}.`;
+    }
+
+    return `For ${insights.period}, you spent ${formatINR(insights.totalSpent)} across ${insights.transactionCount} transactions. Your top category is ${topCategory?.name || 'N/A'} at ${formatINR(topCategory?.amount || 0)}. Ask about savings, top spending, or which expense to reduce first.`;
+};
+
+// =============================================================================
 // AUTH ROUTES
 // =============================================================================
 
@@ -313,9 +571,10 @@ app.post('/api/upload', authenticate, (req, res) => {
                 return res.status(400).json({ message: 'No valid transaction data found in the document.' });
             }
 
+            const aiCleanup = await enhanceTransactionsWithAI(validTransactions);
             const userEmail = (req.body.email || '').trim().toLowerCase();
 
-            const docsToInsert = validTransactions.map(tx => ({
+            const docsToInsert = aiCleanup.transactions.map(tx => ({
                 user_id:    req.userId,
                 date:       tx.date ? new Date(tx.date).toISOString() : new Date().toISOString(),
                 category:   (tx.category || 'Others').trim(),
@@ -347,6 +606,11 @@ app.post('/api/upload', authenticate, (req, res) => {
 
             res.status(200).json({
                 message: `Successfully processed ${savedData.length} record(s).`,
+                ai: {
+                    cleanupApplied: aiCleanup.enabled,
+                    model: aiCleanup.model || null,
+                    message: aiCleanup.message || null,
+                },
                 data: savedData
             });
 
@@ -382,218 +646,109 @@ app.delete('/api/transactions/:id', authenticate, async (req, res) => {
 });
 
 // =============================================================================
-// AI FINANCIAL ADVISOR — SAVINGS + STOCK INVESTMENT RECOMMENDATIONS
+// ASK MY FINANCE CHAT
 // =============================================================================
 
-// Stable blue-chip + growth NSE stocks for recommendation pool
-const STOCK_POOL = [
-    'RELIANCE','TCS','HDFCBANK','INFY','ICICIBANK','HINDUNILVR','ITC','SBIN',
-    'BHARTIARTL','KOTAKBANK','LT','AXISBANK','ASIANPAINT','MARUTI','TITAN',
-    'SUNPHARMA','BAJFINANCE','WIPRO','HCLTECH','TECHM','NESTLEIND',
-    'POWERGRID','NTPC','ONGC','COALINDIA','JSWSTEEL','TATASTEEL',
-    'DRREDDY','EICHERMOT','CIPLA','TATACONSUM','APOLLOHOSP','HEROMOTOCO',
-    'BRITANNIA','INDUSINDBK','M&M','SBILIFE','HDFCLIFE','LTIM',
-    'TATAMOTORS','DMART','PIDILITIND','SIEMENS','HAVELLS','MARICO',
-    'DABUR','COLPAL','TRENT','BAJAJFINSV','BAJAJ-AUTO','DIVISLAB'
-];
-
-// Fetch current price + 1-month change for a symbol from Yahoo Finance
-async function fetchStockData(symbol) {
+app.post('/api/ai/ask', authenticate, async (req, res) => {
     try {
-        const ticker  = `${symbol}.NS`;
-        const period2 = Math.floor(Date.now() / 1000);
-        const period1 = period2 - 30 * 24 * 60 * 60;
-        const url     = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${period1}&period2=${period2}&interval=1mo`;
-        const r       = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-        if (!r.ok) return null;
-        const data   = await r.json();
-        const result = data?.chart?.result?.[0];
-        if (!result) return null;
-        const closes       = result.indicators?.quote?.[0]?.close?.filter(Boolean);
-        const meta         = result.meta;
-        if (!closes || closes.length < 1) return null;
-        const currentPrice = closes[closes.length - 1];
-        const startPrice   = closes[0];
-        const changePercent = startPrice ? ((currentPrice - startPrice) / startPrice) * 100 : 0;
-        return {
-            symbol,
-            name:           meta.longName || meta.shortName || symbol,
-            currentPrice:   Math.round(currentPrice * 100) / 100,
-            changePercent:  Math.round(changePercent * 100) / 100,
-            peRatio:        meta.trailingPE ? Math.round(meta.trailingPE * 10) / 10 : null,
-            marketCap:      meta.marketCap  || null,
-            sector:         meta.sector     || 'N/A',
-        };
-    } catch { return null; }
-}
-
-app.post('/api/ai/advisor', authenticate, async (req, res) => {
-    try {
-        const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
-        if (!OPENROUTER_KEY) return res.status(500).json({ message: 'AI not configured.' });
-
-        const { monthlyIncome } = req.body;
-        if (!monthlyIncome || isNaN(Number(monthlyIncome)) || Number(monthlyIncome) <= 0)
-            return res.status(400).json({ message: 'Please provide your monthly income.' });
-
-        const income = Number(monthlyIncome);
-
-        // 1. Fetch user's last 30 days of transactions
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const question = String(req.body.question || '').trim();
+        if (!question)
+            return res.status(400).json({ message: 'Please ask a finance question.' });
+        if (question.length > 300)
+            return res.status(400).json({ message: 'Please keep your question under 300 characters.' });
 
         const { data: transactions, error } = await supabase
             .from('transactions')
             .select('amount, recipient, category, date')
             .eq('user_id', req.userId)
-            .gte('date', thirtyDaysAgo.toISOString())
-            .order('date', { ascending: false });
+            .order('date', { ascending: false })
+            .limit(200);
 
         if (error) throw error;
         if (!transactions || transactions.length === 0)
-            return res.status(400).json({ message: 'No transactions found for last 30 days. Upload a recent statement first.' });
+            return res.status(400).json({ message: 'Upload transactions first, then ask me about your spending.' });
 
-        // 2. Build spending summary
-        const totalSpent = transactions.reduce((s, tx) => s + Number(tx.amount), 0);
-        const surplus    = income - totalSpent;
+        const insights = buildTransactionInsights(transactions);
+        const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
 
-        const catTotals = {};
-        transactions.forEach(tx => {
-            const cat = tx.category || 'Others';
-            catTotals[cat] = (catTotals[cat] || 0) + Number(tx.amount);
-        });
-        const catBreakdown = Object.entries(catTotals)
-            .sort((a, b) => b[1] - a[1])
-            .map(([cat, amt]) => `${cat}: ₹${Math.round(amt).toLocaleString('en-IN')} (${Math.round((amt/totalSpent)*100)}%)`)
-            .join('');
-
-        // 3. Fetch live stock data for a subset of the pool (20 stocks to stay fast)
-        const shuffled   = STOCK_POOL.sort(() => 0.5 - Math.random()).slice(0, 20);
-        const stockFetch = await Promise.allSettled(shuffled.map(fetchStockData));
-        const stocks     = stockFetch
-            .filter(r => r.status === 'fulfilled' && r.value)
-            .map(r => r.value)
-            .sort((a, b) => b.changePercent - a.changePercent)
-            .slice(0, 10);
-
-        const stockSummary = stocks.map(s =>
-            `${s.symbol} (${s.name}): ₹${s.currentPrice}, 1M change: ${s.changePercent > 0 ? '+' : ''}${s.changePercent}%${s.peRatio ? `, PE: ${s.peRatio}` : ''}`
-        ).join('');
-
-        // 4. Build AI prompt
-        const prompt = `You are an expert Indian personal finance advisor. Analyze the user's finances and give highly specific, actionable advice.
-
-USER FINANCIAL PROFILE:
-- Monthly Income: ₹${Math.round(income).toLocaleString('en-IN')}
-- Total Spent This Month: ₹${Math.round(totalSpent).toLocaleString('en-IN')}
-- Monthly Surplus: ₹${Math.round(surplus).toLocaleString('en-IN')} (${Math.round((surplus/income)*100)}% of income)
-- Number of Transactions: ${transactions.length}
-
-SPENDING BREAKDOWN:
-  ${catBreakdown}
-
-CURRENT TOP PERFORMING NSE STOCKS (Live Data):
-  ${stockSummary}
-
-Based on this data, provide a complete financial plan. Respond ONLY with this exact JSON (no markdown, no extra text):
-{
-  "savingsAdvice": {
-    "currentSavingsRate": <number: % of income currently saved>,
-    "recommendedSavingsRate": <number: ideal % to save>,
-    "monthlySavingsAmount": <number: exact ₹ amount to save per month>,
-    "emergencyFundTarget": <number: 6 months expenses in ₹>,
-    "summary": "<2 sentence assessment of their savings situation>"
-  },
-  "cutSpendings": [
-    { "category": "<category name>", "currentAmount": <number>, "suggestedAmount": <number>, "savingAmount": <number>, "reason": "<specific reason why and how to cut>" }
-  ],
-  "investmentPlan": {
-    "monthlyInvestmentAmount": <number: ₹ to invest after savings>,
-    "stocks": [
-      {
-        "symbol": "<NSE symbol from the stock list above>",
-        "name": "<company name>",
-        "currentPrice": <number>,
-        "allocationPercent": <number: % of investment amount>,
-        "allocationAmount": <number: exact ₹>,
-        "sharesCanBuy": <number: floor of allocationAmount/currentPrice>,
-        "reason": "<specific reason why this stock suits this user's profile>",
-        "riskLevel": "Low|Medium|High"
-      }
-    ],
-    "expectedMonthlyReturn": "<estimated % range>",
-    "disclaimer": "Investments are subject to market risks. This is AI-generated advice, not SEBI-registered financial advice."
-  },
-  "overallScore": <number 1-10: financial health score>,
-  "topPriority": "<single most important action the user should take this month>"
-}`;
-
-        // 5. Call AI with fallback models
-        const FREE_MODELS = [
-            'openrouter/free',
-            'meta-llama/llama-3.3-70b-instruct:free',
-            'google/gemma-3-27b-it:free',
-            'qwen/qwen3-8b:free',
-        ];
-
-        let aiData = null;
-        let lastError = null;
-        for (const model of FREE_MODELS) {
-            const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${OPENROUTER_KEY}`,
-                    'Content-Type': 'application/json',
-                    'HTTP-Referer': process.env.FRONTEND_URL || 'http://localhost:5173',
-                    'X-Title': 'Dr. Finance AI'
-                },
-                body: JSON.stringify({
-                    model,
-                    messages: [{ role: 'user', content: prompt }],
-                    max_tokens: 1500,
-                    temperature: 0.4
-                })
+        if (!OPENROUTER_KEY) {
+            return res.status(200).json({
+                answer: getLocalFinanceAnswer(question, insights),
+                source: 'local',
+                insights,
             });
-            if (!aiRes.ok) {
-                lastError = await aiRes.text();
-                console.warn(`Model ${model} failed:`, lastError);
-                continue;
+        }
+
+        const prompt = `You are Ask My Finance inside Dr. Finance AI.
+
+Answer the user's finance question using only their transaction summary. Be specific, concise, and practical.
+Rules:
+- Keep the answer under 120 words.
+- Use Indian rupee amounts.
+- Do not give regulated investment advice here.
+- If data is insufficient, say exactly what is missing.
+- Return only JSON: {"answer":"...","followUps":["short question 1","short question 2"]}
+
+Question: ${question}
+
+Transaction summary:
+${JSON.stringify(insights)}`;
+
+        let lastError = null;
+        for (const model of OPENROUTER_MODELS) {
+            try {
+                const aiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${OPENROUTER_KEY}`,
+                        'Content-Type': 'application/json',
+                        'HTTP-Referer': process.env.FRONTEND_URL || 'http://localhost:5173',
+                        'X-Title': 'Dr. Finance AI'
+                    },
+                    body: JSON.stringify({
+                        model,
+                        messages: [{ role: 'user', content: prompt }],
+                        max_tokens: 500,
+                        temperature: 0.25
+                    })
+                });
+
+                if (!aiRes.ok) {
+                    lastError = await aiRes.text();
+                    console.warn(`Ask Finance model ${model} failed:`, lastError);
+                    continue;
+                }
+
+                const aiData = await aiRes.json();
+                const parsed = parseJsonFromAIText(aiData.choices?.[0]?.message?.content);
+                if (!parsed?.answer) {
+                    lastError = 'Ask Finance returned invalid JSON.';
+                    continue;
+                }
+
+                return res.status(200).json({
+                    answer: String(parsed.answer).trim(),
+                    followUps: Array.isArray(parsed.followUps) ? parsed.followUps.slice(0, 2) : [],
+                    source: 'ai',
+                    model,
+                });
+            } catch (err) {
+                lastError = err.message;
+                console.warn(`Ask Finance error with model ${model}:`, err.message);
             }
-            aiData = await aiRes.json();
-            console.log(`AI advisor response from: ${model}`);
-            break;
         }
 
-        if (!aiData) {
-            console.error('All AI models failed:', lastError);
-            return res.status(502).json({ message: 'AI service unavailable. Please try again shortly.' });
-        }
-
-        const rawText = aiData.choices?.[0]?.message?.content || '';
-        if (!rawText.trim())
-            return res.status(502).json({ message: 'AI returned empty response. Try again.' });
-
-        const jsonMatch = rawText.replace(/```json|```/g, '').trim().match(/\{[\s\S]*\}/);
-        if (!jsonMatch)
-            return res.status(502).json({ message: 'AI response was not valid JSON. Try again.' });
-
-        let parsed;
-        try {
-            parsed = JSON.parse(jsonMatch[0]);
-        } catch (e) {
-            console.error('JSON parse error:', e.message);
-            return res.status(502).json({ message: 'Could not parse AI response. Try again.' });
-        }
-
-        // Attach live stock data used for transparency
-        parsed.stockDataUsed = stocks;
-        parsed.generatedAt   = new Date().toISOString();
-
-        res.status(200).json(parsed);
+        console.warn('Ask Finance AI unavailable. Falling back locally.', lastError);
+        res.status(200).json({
+            answer: getLocalFinanceAnswer(question, insights),
+            source: 'local',
+            message: 'AI unavailable. Used local spending summary.',
+            insights,
+        });
 
     } catch (err) {
-        console.error('AI advisor error:', err.message);
-        res.status(500).json({ message: 'Advisor failed. Try again.' });
+        console.error('Ask Finance error:', err.message);
+        res.status(500).json({ message: 'Ask My Finance failed. Try again.' });
     }
 });
 
