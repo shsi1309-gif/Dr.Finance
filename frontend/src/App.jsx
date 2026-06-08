@@ -8,7 +8,7 @@ import {
   Wallet, Upload, TrendingUp, DollarSign, Activity,
   ChevronRight, FileText, Trash2, Zap, LayoutGrid,
   LogOut, User, Lock, Mail, Eye, EyeOff, BarChart2,
-  Brain, MessageCircle, Send
+  Brain, MessageCircle, Send, X
 } from 'lucide-react';
 
 /* ─── Fonts & Global CSS ─── */
@@ -579,6 +579,118 @@ style.textContent = `
   .ask-send:hover:not(:disabled) { background: rgba(167,139,250,0.14); border-color: rgba(167,139,250,0.5); }
   .ask-send:disabled { opacity: 0.5; cursor: not-allowed; }
 
+  .finance-chat-widget {
+    position: fixed;
+    right: 28px;
+    bottom: 28px;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 14px;
+  }
+
+  .finance-chat-panel {
+    width: min(390px, calc(100vw - 32px));
+    max-height: min(620px, calc(100vh - 116px));
+    background: linear-gradient(180deg, rgba(21,25,33,0.98), rgba(12,15,21,0.98));
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 18px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.42);
+    padding: 18px;
+    animation: chatPop 0.22s ease both;
+    backdrop-filter: blur(18px);
+  }
+
+  @keyframes chatPop {
+    from { opacity: 0; transform: translateY(12px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .finance-chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .finance-chat-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .finance-chat-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #39d98a, #1e9f65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 12px 30px rgba(57,217,138,0.22);
+    flex-shrink: 0;
+  }
+
+  .finance-chat-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .finance-chat-status {
+    margin-top: 2px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--green);
+    text-transform: uppercase;
+  }
+
+  .finance-chat-close {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.045);
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .finance-chat-close:hover { color: var(--text); border-color: var(--border2); background: rgba(255,255,255,0.07); }
+
+  .finance-chat-panel .ask-chat {
+    max-height: min(330px, calc(100vh - 360px));
+    min-height: 150px;
+  }
+
+  .finance-chat-toggle {
+    width: 66px;
+    height: 66px;
+    border-radius: 50%;
+    border: 0;
+    background: linear-gradient(135deg, #39d98a, #158f59);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 18px 42px rgba(57,217,138,0.34), 0 0 0 8px rgba(57,217,138,0.08);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .finance-chat-toggle:hover {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 22px 52px rgba(57,217,138,0.4), 0 0 0 10px rgba(57,217,138,0.1);
+  }
+  .finance-chat-toggle:active { transform: translateY(0) scale(0.98); }
+
   @media (max-width: 920px) {
     .inner { padding: 22px 16px 48px; }
     .main-grid { grid-template-columns: 1fr; }
@@ -595,6 +707,9 @@ style.textContent = `
     .tx-badge { display: none; }
     .delete-btn { grid-column: 2; }
     .ask-input-wrap { gap: 8px; }
+    .finance-chat-widget { right: 18px; bottom: 18px; }
+    .finance-chat-toggle { width: 60px; height: 60px; }
+    .finance-chat-panel { padding: 16px; }
   }
 `;
 document.head.appendChild(style);
@@ -887,6 +1002,7 @@ export default function App() {
   const [askMessages, setAskMessages]     = useState([]);
   const [askLoading, setAskLoading]       = useState(false);
   const [askError, setAskError]           = useState('');
+  const [askOpen, setAskOpen]             = useState(false);
 
   const fetchHistory = useCallback(async () => {
     if (!getToken()) return;
@@ -989,6 +1105,7 @@ export default function App() {
   const askFinance = async (questionOverride) => {
     const question = (questionOverride || askInput).trim();
     if (!question) return;
+    setAskOpen(true);
     if (transactions.length === 0) {
       setAskError('Upload transactions first, then ask me about your spending.');
       return;
@@ -1244,84 +1361,103 @@ export default function App() {
               )}
             </div>
 
-            {/* Ask My Finance */}
-            <div className="card" style={{ animationDelay: '0.35s' }}>
-              <div className="card-title">
-                <div className="card-title-left"><MessageCircle size={11} />Ask My Finance</div>
-                <div style={{ fontFamily: 'DM Mono', fontSize: 9, color: 'var(--purple)', letterSpacing: '0.1em' }}>TRANSACTION CHAT</div>
-              </div>
+          </div>
+        </div>
+      </div>
 
-              <div className="ask-suggestions">
-                {ASK_SUGGESTIONS.map(prompt => (
-                  <button
-                    key={prompt}
-                    className="ask-chip"
-                    onClick={() => askFinance(prompt)}
-                    disabled={askLoading || transactions.length === 0}
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
-
-              <div className="ask-chat">
-                {askMessages.length === 0 ? (
-                  <div className="empty" style={{ padding: '24px 20px' }}>
-                    <Brain size={22} />
-                    <p>ASK ABOUT YOUR SPENDING</p>
-                  </div>
-                ) : (
-                  askMessages.map((msg, i) => (
-                    <div key={`${msg.role}-${i}`} className={`ask-message ${msg.role}`}>
-                      {msg.text}
-                      {msg.source && <div className="ask-source">{msg.source}</div>}
-                    </div>
-                  ))
-                )}
-                {askLoading && (
-                  <div className="ask-message ai">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div className="ai-spinner" /> Thinking through your spending...
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {askError && (
-                <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(255,79,110,0.06)', border: '1px solid rgba(255,79,110,0.2)', borderRadius: 8, fontSize: 12, color: 'var(--rose)', fontFamily: 'DM Mono' }}>
-                  {askError}
+      <div className="finance-chat-widget">
+        {askOpen && (
+          <div className="finance-chat-panel">
+            <div className="finance-chat-header">
+              <div className="finance-chat-title">
+                <div className="finance-chat-avatar"><MessageCircle size={19} /></div>
+                <div>
+                  <div className="finance-chat-name">Ask My Finance</div>
+                  <div className="finance-chat-status">Online · Spending assistant</div>
                 </div>
-              )}
-
-              <div className="ask-input-wrap">
-                <input
-                  className="ask-input"
-                  value={askInput}
-                  onChange={e => setAskInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && askFinance()}
-                  placeholder="Ask about savings, categories, or cuts"
-                  disabled={askLoading}
-                  maxLength={300}
-                />
-                <button
-                  className="ask-send"
-                  onClick={() => askFinance()}
-                  disabled={askLoading || !askInput.trim() || transactions.length === 0}
-                  title="Send question"
-                >
-                  {askLoading ? <div className="ai-spinner" /> : <Send size={16} />}
-                </button>
               </div>
+              <button className="finance-chat-close" onClick={() => setAskOpen(false)} title="Close chat">
+                <X size={16} />
+              </button>
+            </div>
 
-              {transactions.length === 0 && (
-                <div style={{ marginTop: 10, fontFamily: 'DM Mono', fontSize: 10, color: '#2a2a2a', textAlign: 'center' }}>
-                  Upload transactions first to start chatting
+            <div className="ask-suggestions">
+              {ASK_SUGGESTIONS.map(prompt => (
+                <button
+                  key={prompt}
+                  className="ask-chip"
+                  onClick={() => askFinance(prompt)}
+                  disabled={askLoading || transactions.length === 0}
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+
+            <div className="ask-chat">
+              {askMessages.length === 0 ? (
+                <div className="empty" style={{ padding: '24px 20px' }}>
+                  <Brain size={22} />
+                  <p>ASK ABOUT YOUR SPENDING</p>
+                </div>
+              ) : (
+                askMessages.map((msg, i) => (
+                  <div key={`${msg.role}-${i}`} className={`ask-message ${msg.role}`}>
+                    {msg.text}
+                    {msg.source && <div className="ask-source">{msg.source}</div>}
+                  </div>
+                ))
+              )}
+              {askLoading && (
+                <div className="ask-message ai">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div className="ai-spinner" /> Thinking through your spending...
+                  </div>
                 </div>
               )}
             </div>
 
+            {askError && (
+              <div style={{ marginTop: 10, padding: '10px 14px', background: 'rgba(255,79,110,0.06)', border: '1px solid rgba(255,79,110,0.2)', borderRadius: 8, fontSize: 12, color: 'var(--rose)', fontFamily: 'DM Mono' }}>
+                {askError}
+              </div>
+            )}
+
+            <div className="ask-input-wrap">
+              <input
+                className="ask-input"
+                value={askInput}
+                onChange={e => setAskInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && askFinance()}
+                placeholder="Ask about savings, categories, or cuts"
+                disabled={askLoading}
+                maxLength={300}
+              />
+              <button
+                className="ask-send"
+                onClick={() => askFinance()}
+                disabled={askLoading || !askInput.trim() || transactions.length === 0}
+                title="Send question"
+              >
+                {askLoading ? <div className="ai-spinner" /> : <Send size={16} />}
+              </button>
+            </div>
+
+            {transactions.length === 0 && (
+              <div style={{ marginTop: 10, fontFamily: 'DM Mono', fontSize: 10, color: '#4b5563', textAlign: 'center' }}>
+                Upload transactions first to start chatting
+              </div>
+            )}
           </div>
-        </div>
+        )}
+
+        <button
+          className="finance-chat-toggle"
+          onClick={() => setAskOpen(prev => !prev)}
+          title={askOpen ? 'Close Ask My Finance' : 'Open Ask My Finance'}
+        >
+          {askOpen ? <X size={26} /> : <MessageCircle size={30} />}
+        </button>
       </div>
     </div>
   );
