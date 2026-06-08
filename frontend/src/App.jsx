@@ -599,7 +599,7 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-const API_BASE = "http://127.0.0.1:5001/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://dr-finance.onrender.com/api";
 const CHART_COLORS = ['#d4a843', '#1fff8e', '#3dc8ff', '#ff4f6e', '#a78bfa', '#f97316', '#facc15', '#06b6d4', '#84cc16'];
 const ASK_SUGGESTIONS = [
   'Where did I spend most this month?',
